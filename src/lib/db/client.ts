@@ -1,0 +1,72 @@
+import fs from "node:fs";
+import path from "node:path";
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import * as schema from "./schema";
+
+const dataDir = path.join(process.cwd(), "data");
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const sqlite = new Database(path.join(dataDir, "teio.db"));
+sqlite.pragma("journal_mode = WAL");
+sqlite.pragma("foreign_keys = ON");
+
+// Idempotent bootstrap so a fresh checkout works with zero setup. This must
+// stay in sync with schema.ts by hand; `npm run db:push` (drizzle-kit) is the
+// tool for real schema changes during development.
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS profile (
+    id TEXT PRIMARY KEY,
+    tier TEXT NOT NULL DEFAULT 'max',
+    xp INTEGER NOT NULL DEFAULT 0,
+    hearts INTEGER NOT NULL DEFAULT 5,
+    max_hearts INTEGER NOT NULL DEFAULT 5,
+    streak_days INTEGER NOT NULL DEFAULT 0,
+    streak_freeze_available INTEGER NOT NULL DEFAULT 1,
+    last_active_date_iso TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS lesson_progress (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL,
+    lesson_id TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    completed INTEGER NOT NULL DEFAULT 0,
+    best_score_percent INTEGER NOT NULL DEFAULT 0,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_attempt_iso TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS badge (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL,
+    badge_id TEXT NOT NULL,
+    earned_at_iso TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS ai_message_log (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL,
+    date_iso TEXT NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0
+  );
+`);
+
+export const db = drizzle(sqlite, { schema });
+
+const LOCAL_PROFILE_ID = "local";
+
+export function ensureLocalProfile() {
+  const existing = sqlite
+    .prepare("SELECT id FROM profile WHERE id = ?")
+    .get(LOCAL_PROFILE_ID);
+  if (existing) return;
+  sqlite
+    .prepare(
+      `INSERT INTO profile (id, tier, xp, hearts, max_hearts, streak_days, streak_freeze_available, last_active_date_iso)
+       VALUES (?, 'max', 0, 5, 5, 0, 1, ?)`,
+    )
+    .run(LOCAL_PROFILE_ID, new Date().toISOString());
+}

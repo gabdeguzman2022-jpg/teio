@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+:root {
+  --color-cream: #fdfbf6;
+  --color-ink: #171423;
+
+  --color-primary-50: #eef3ff;
+  --color-primary-100: #dbe6ff;
+  --color-primary-200: #b6cbff;
+  --color-primary-300: #89a8ff;
+  --color-primary-400: #5c81fa;
+  --color-primary-500: #3860ec;
+  --color-primary-600: #2749d1;
+  --color-primary-700: #1f3aa8;
+  --color-primary-800: #1c3184;
+  --color-primary-900: #182a68;
+
+  --color-accent-50: #fff7e6;
+  --color-accent-100: #ffecc2;
+  --color-accent-200: #ffd685;
+  --color-accent-300: #ffbd4d;
+  --color-accent-400: #ffa726;
+  --color-accent-500: #fa8f0c;
+  --color-accent-600: #db7204;
+  --color-accent-700: #b25705;
+  --color-accent-800: #8c440c;
+  --color-accent-900: #70380f;
+
+  --color-success-400: #4ade80;
+  --color-success-500: #22b562;
+  --color-success-600: #159249;
+
+  --color-danger-400: #ff8577;
+  --color-danger-500: #f0473a;
+  --color-danger-600: #cc2e22;
+}
+
+@theme inline {
+  --color-cream: var(--color-cream);
+  --color-ink: var(--color-ink);
+
+  --color-primary-50: var(--color-primary-50);
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-200: var(--color-primary-200);
+  --color-primary-300: var(--color-primary-300);
+  --color-primary-400: var(--color-primary-400);
+  --color-primary-500: var(--color-primary-500);
+  --color-primary-600: var(--color-primary-600);
+  --color-primary-700: var(--color-primary-700);
+  --color-primary-800: var(--color-primary-800);
+  --color-primary-900: var(--color-primary-900);
+  --color-primary: var(--color-primary-600);
+
+  --color-accent-50: var(--color-accent-50);
+  --color-accent-100: var(--color-accent-100);
+  --color-accent-200: var(--color-accent-200);
+  --color-accent-300: var(--color-accent-300);
+  --color-accent-400: var(--color-accent-400);
+  --color-accent-500: var(--color-accent-500);
+  --color-accent-600: var(--color-accent-600);
+  --color-accent-700: var(--color-accent-700);
+  --color-accent-800: var(--color-accent-800);
+  --color-accent-900: var(--color-accent-900);
+  --color-accent: var(--color-accent-500);
+
+  --color-success-400: var(--color-success-400);
+  --color-success-500: var(--color-success-500);
+  --color-success-600: var(--color-success-600);
+  --color-danger-400: var(--color-danger-400);
+  --color-danger-500: var(--color-danger-500);
+  --color-danger-600: var(--color-danger-600);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+}
