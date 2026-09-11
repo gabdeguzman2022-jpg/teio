@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Teio — Gamified STEM Learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Manrope:wght@400;600;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #14161a;
+    --cream: #fff8ec;
+    --primary-500: #3860ec;
+    --primary-700: #1f3fae;
+    --primary-100: #dbe4ff;
+    --accent-400: #fa8f0c;
+    --accent-100: #ffe9c7;
+    --success-500: #22b562;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: "Manrope", system-ui, sans-serif;
+    padding: 0 16px;
+  }
+  h1, h2, .display { font-family: "Space Grotesk", system-ui, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding-block: 56px; }
+  .card {
+    border: 3px solid var(--ink);
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 6px 6px 0 0 var(--ink);
+    padding: 28px;
+  }
+  header.hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 18px;
+    margin-bottom: 48px;
+  }
+  .mascot {
+    width: 88px; height: 88px;
+    border-radius: 28px;
+    background: var(--primary-500);
+    border: 4px solid var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 40px;
+  }
+  .badge {
+    display: inline-block;
+    border: 2px solid var(--ink);
+    background: var(--primary-100);
+    color: var(--primary-700);
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 4px 12px;
+    border-radius: 999px;
+  }
+  h1 { font-size: clamp(2rem, 6vw, 3rem); margin: 0; }
+  .lede { max-width: 42ch; color: #444; font-size: 1.05rem; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin: 40px 0;
+  }
+  .feature h3 { margin: 0 0 8px; font-size: 1.1rem; }
+  .feature p { margin: 0; color: #444; font-size: 0.95rem; }
+  .feature .icon {
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    border: 3px solid var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+  .subjects { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0; }
+  .subjects span {
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    background: var(--accent-100);
+  }
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 32px;
+  }
+  .btn {
+    display: inline-block;
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    padding: 12px 22px;
+    font-weight: 700;
+    font-family: "Space Grotesk", sans-serif;
+    text-decoration: none;
+    color: var(--ink);
+    box-shadow: 4px 4px 0 0 var(--ink);
+  }
+  .btn.primary { background: var(--primary-500); color: #fff; }
+  .btn.accent { background: var(--accent-400); }
+  .note {
+    margin-top: 40px;
+    font-size: 0.9rem;
+    color: #555;
+    border-left: 4px solid var(--accent-400);
+    padding-left: 14px;
+  }
+  footer { text-align: center; color: #777; font-size: 0.85rem; padding-bottom: 40px; }
+  code { background: var(--primary-100); padding: 2px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="mascot">🌟</div>
+      <span class="badge">Local-first · Free / Pro / Max</span>
+      <h1>Teio</h1>
+      <p class="lede">A gamified STEM app for grades 7–12 — skill trees, streaks, hearts, badges,
+        and a local AI tutor, built to run entirely on your own machine.</p>
+      <div class="subjects">
+        <span>Math</span><span>Science</span><span>Technology</span><span>Engineering</span>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card feature">
+        <div class="icon">🔥</div>
+        <h3>Duolingo-style skill trees</h3>
+        <p>XP, hearts, daily streaks with a freeze, and badges — one full lesson unit per subject.</p>
+      </div>
+      <div class="card feature">
+        <div class="icon">🤖</div>
+        <h3>Local AI tutor</h3>
+        <p>Runs on a small model through Ollama on your own machine — Socratic hints, not
+          just answers, and never phones home.</p>
+      </div>
+      <div class="card feature">
+        <div class="icon">🔒</div>
+        <h3>No cloud, no login</h3>
+        <p>SQLite on disk, no account, no payment processing. Free/Pro/Max tier logic is real,
+          just defaulted to Max for your own copy.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="display" style="margin-top:0;">Run it yourself</h2>
+      <p>This page is a static showcase — the real app needs a server (for the database and AI
+        tutor), so it runs locally rather than being hosted here.</p>
+      <pre style="background:var(--primary-100); padding:14px; border-radius:12px; overflow-x:auto;"><code>git clone https://github.com/gabdeguzman2022-jpg/teio.git
+cd teio
+npm install
+npm run dev</code></pre>
+      <p>Then open <code>http://localhost:3000</code>. Full setup (including the optional AI
+        tutor) is in the repo's README.</p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/gabdeguzman2022-jpg/teio">View on GitHub</a>
+        <a class="btn accent" href="https://github.com/gabdeguzman2022-jpg/teio#readme">Read the docs</a>
+      </div>
+    </div>
+
+    <p class="note">Built with Next.js, TypeScript, Tailwind, Framer Motion, Drizzle/SQLite, and Ollama.</p>
+    <footer>Teio — a personal project.</footer>
+  </div>
+</body>
+</html>
