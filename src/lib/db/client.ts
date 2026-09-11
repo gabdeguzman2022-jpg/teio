@@ -25,12 +25,13 @@ sqlite.exec(`
     max_hearts INTEGER NOT NULL DEFAULT 5,
     streak_days INTEGER NOT NULL DEFAULT 0,
     streak_freeze_available INTEGER NOT NULL DEFAULT 1,
-    last_active_date_iso TEXT NOT NULL
+    last_active_date_iso TEXT NOT NULL,
+    last_heart_regen_iso TEXT
   );
 
   CREATE TABLE IF NOT EXISTS lesson_progress (
     id TEXT PRIMARY KEY,
-    profile_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL REFERENCES profile(id) ON DELETE CASCADE,
     lesson_id TEXT NOT NULL,
     subject TEXT NOT NULL,
     completed INTEGER NOT NULL DEFAULT 0,
@@ -41,18 +42,30 @@ sqlite.exec(`
 
   CREATE TABLE IF NOT EXISTS badge (
     id TEXT PRIMARY KEY,
-    profile_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL REFERENCES profile(id) ON DELETE CASCADE,
     badge_id TEXT NOT NULL,
     earned_at_iso TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS ai_message_log (
     id TEXT PRIMARY KEY,
-    profile_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL REFERENCES profile(id) ON DELETE CASCADE,
     date_iso TEXT NOT NULL,
     count INTEGER NOT NULL DEFAULT 0
   );
 `);
+
+// CREATE TABLE IF NOT EXISTS above only shapes a fresh database — a db file
+// that already existed before a column/constraint was added here keeps its
+// old shape. This backfills columns added after the initial release; the
+// FK constraints above can't be retrofitted this way (SQLite requires a full
+// table rebuild to add one to an existing table), so they only take effect
+// for a fresh database until this schema is reused for a real multi-user
+// extension, per the low-severity note this is tracked under.
+const profileColumns = sqlite.prepare("PRAGMA table_info(profile)").all() as { name: string }[];
+if (!profileColumns.some((col) => col.name === "last_heart_regen_iso")) {
+  sqlite.exec("ALTER TABLE profile ADD COLUMN last_heart_regen_iso TEXT");
+}
 
 export const db = drizzle(sqlite, { schema });
 

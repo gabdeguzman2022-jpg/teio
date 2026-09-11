@@ -45,6 +45,12 @@ export interface GamificationState {
   streakDays: number;
   streakFreezeAvailable: boolean;
   lastActiveDateISO: string;
+  // Separate anchor for heart-regen timing, distinct from lastActiveDateISO
+  // (which streak logic stamps on nearly every request). Optional so callers
+  // that build a GamificationState without persisted DB state (defaults,
+  // client-side API response mapping) don't need to supply it; engine.ts
+  // falls back to lastActiveDateISO when absent.
+  lastHeartRegenISO?: string;
   badges: string[];
 }
 

@@ -13,11 +13,16 @@ export const profile = sqliteTable("profile", {
     .notNull()
     .default(true),
   lastActiveDateISO: text("last_active_date_iso").notNull(),
+  // Nullable: rows written before this column existed have no value here.
+  // Readers fall back to lastActiveDateISO when it's null (see queries.ts).
+  lastHeartRegenISO: text("last_heart_regen_iso"),
 });
 
 export const lessonProgress = sqliteTable("lesson_progress", {
   id: text("id").primaryKey(),
-  profileId: text("profile_id").notNull(),
+  profileId: text("profile_id")
+    .notNull()
+    .references(() => profile.id, { onDelete: "cascade" }),
   lessonId: text("lesson_id").notNull(),
   subject: text("subject").notNull(),
   completed: integer("completed", { mode: "boolean" }).notNull().default(false),
@@ -28,14 +33,18 @@ export const lessonProgress = sqliteTable("lesson_progress", {
 
 export const badge = sqliteTable("badge", {
   id: text("id").primaryKey(),
-  profileId: text("profile_id").notNull(),
+  profileId: text("profile_id")
+    .notNull()
+    .references(() => profile.id, { onDelete: "cascade" }),
   badgeId: text("badge_id").notNull(),
   earnedAtISO: text("earned_at_iso").notNull(),
 });
 
 export const aiMessageLog = sqliteTable("ai_message_log", {
   id: text("id").primaryKey(),
-  profileId: text("profile_id").notNull(),
+  profileId: text("profile_id")
+    .notNull()
+    .references(() => profile.id, { onDelete: "cascade" }),
   dateISO: text("date_iso").notNull(),
   count: integer("count").notNull().default(0),
 });

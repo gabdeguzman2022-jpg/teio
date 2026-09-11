@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Manrope } from "next/font/google";
 import "./globals.css";
+import { TutorLauncher } from "@/components/TutorLauncher";
+import { getAiMessagesUsedToday, getOrCreateLocalProfile } from "@/lib/db/queries";
+import { canUseAiTutor } from "@/lib/gamification/tiers";
+import { TIER_LIMITS } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
@@ -20,6 +26,11 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  const { tier } = getOrCreateLocalProfile();
+  const messagesUsedToday = getAiMessagesUsedToday();
+  const canChat = canUseAiTutor(tier, messagesUsedToday);
+  const messageLimit = TIER_LIMITS[tier].aiMessagesPerDay;
+
   return (
     <html
       lang="en"
@@ -27,6 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col font-sans bg-cream text-ink">
         {children}
+        <TutorLauncher canChat={canChat} messagesUsedToday={messagesUsedToday} messageLimit={messageLimit} />
       </body>
     </html>
   );
