@@ -64,7 +64,17 @@ sqlite.exec(`
 // extension, per the low-severity note this is tracked under.
 const profileColumns = sqlite.prepare("PRAGMA table_info(profile)").all() as { name: string }[];
 if (!profileColumns.some((col) => col.name === "last_heart_regen_iso")) {
-  sqlite.exec("ALTER TABLE profile ADD COLUMN last_heart_regen_iso TEXT");
+  // Next.js's build spawns several worker processes to collect page data for
+  // different routes in parallel, and each one imports this module and runs
+  // this backfill independently — so a plain check-then-ALTER races across
+  // processes (two workers can see the column missing before either adds
+  // it). Treat "duplicate column" as a lost race, not a real error.
+  try {
+    sqlite.exec("ALTER TABLE profile ADD COLUMN last_heart_regen_iso TEXT");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!message.includes("duplicate column name")) throw err;
+  }
 }
 
 export const db = drizzle(sqlite, { schema });

@@ -10,8 +10,14 @@ import HeartsDisplay from "@/components/HeartsDisplay";
 import StreakBanner from "@/components/StreakBanner";
 import PressableButton from "@/components/animations/PressableButton";
 import ConfettiBurst from "@/components/animations/ConfettiBurst";
+import ShakeOnTrigger from "@/components/animations/ShakeOnTrigger";
 import XPCounter from "@/components/animations/XPCounter";
 import XPGainBadge, { type XPGainEvent } from "@/components/animations/XPGainBadge";
+
+// Confetti is reserved for real milestones (lesson complete, a run of
+// consecutive correct answers) rather than firing on every single correct
+// answer, which diluted the payoff of the actual lesson-complete celebration.
+const COMBO_CONFETTI_EVERY = 3;
 
 export interface LessonAnswerEvent {
   lesson: Lesson;
@@ -88,6 +94,8 @@ export default function LessonPlayer({
   const [sessionXp, setSessionXp] = useState(0);
   const [correctBurst, setCorrectBurst] = useState(0);
   const [completeBurst, setCompleteBurst] = useState(0);
+  const [, setComboCount] = useState(0);
+  const [wrongTrigger, setWrongTrigger] = useState(0);
   const [xpEvents, setXpEvents] = useState<XPGainEvent[]>([]);
 
   const xpEventIdRef = useRef(0);
@@ -120,7 +128,13 @@ export default function LessonPlayer({
   const total = lesson.questions.length;
   const question = lesson.questions[questionIndex] as Question | undefined;
   const isLastQuestion = questionIndex >= total - 1;
-  const blocked = !Number.isFinite(maxHearts) ? false : hearts <= 0;
+  // Only takes effect between questions (answerStatus "unanswered"), never
+  // while the current question's correct-answer explanation is on screen —
+  // hearts can drop to 0 from an async persist() round-trip completing while
+  // the player is still reading that explanation, and swapping the whole
+  // screen out from under them mid-read felt like it was ripped away.
+  const outOfHearts = !Number.isFinite(maxHearts) ? false : hearts <= 0;
+  const blocked = outOfHearts && answerStatus === "unanswered";
 
   const mascotExpression: MascotExpression = useMemo(() => {
     if (phase === "complete") return "celebrating";
@@ -148,7 +162,11 @@ export default function LessonPlayer({
 
     if (correct) {
       setSessionXp((xp) => xp + xpPerCorrectAnswer);
-      setCorrectBurst((b) => b + 1);
+      setComboCount((c) => {
+        const next = c + 1;
+        if (next % COMBO_CONFETTI_EVERY === 0) setCorrectBurst((b) => b + 1);
+        return next;
+      });
       const id = ++xpEventIdRef.current;
       setXpEvents((prev) => [...prev, { id, amount: xpPerCorrectAnswer }]);
       const timeout = setTimeout(() => {
@@ -158,6 +176,8 @@ export default function LessonPlayer({
       pendingTimeouts.current.add(timeout);
       onCorrect?.({ lesson, question, questionIndex, xpAwarded: xpPerCorrectAnswer });
     } else {
+      setComboCount(0);
+      setWrongTrigger((t) => t + 1);
       onIncorrect?.({ lesson, question, questionIndex });
     }
   }
@@ -177,6 +197,7 @@ export default function LessonPlayer({
     setQuestionIndex(0);
     setResults([]);
     setSessionXp(0);
+    setComboCount(0);
     resetQuestionInputs();
   }
 
@@ -343,9 +364,8 @@ export default function LessonPlayer({
                     : isSelected
                       ? "incorrect"
                       : "default";
-              return (
+              const button = (
                 <PressableButton
-                  key={i}
                   fullWidth
                   active={isSelected && answerStatus === "unanswered"}
                   state={state}
@@ -354,6 +374,16 @@ export default function LessonPlayer({
                 >
                   {choice}
                 </PressableButton>
+              );
+              // Shake the button the player actually tapped, not just the
+              // hearts counter in the corner — that's where their attention
+              // already is the instant they see it was wrong.
+              return isSelected && state === "incorrect" ? (
+                <ShakeOnTrigger key={i} trigger={wrongTrigger}>
+                  {button}
+                </ShakeOnTrigger>
+              ) : (
+                <div key={i}>{button}</div>
               );
             })}
           </div>

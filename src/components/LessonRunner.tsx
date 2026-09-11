@@ -3,11 +3,9 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Nav } from "@/components/Nav";
-import LessonPlayer, {
-  type LessonCompleteSummary,
-  type LessonCorrectEvent,
-} from "@/components/LessonPlayer";
-import { DEFAULT_XP_PER_CORRECT_ANSWER } from "@/lib/gamification/engine";
+import LessonPlayer, { type LessonCompleteSummary } from "@/components/LessonPlayer";
+import BadgeUnlockToast, { type UnlockedBadge } from "@/components/animations/BadgeUnlockToast";
+import { BADGES, DEFAULT_XP_PER_CORRECT_ANSWER } from "@/lib/gamification/engine";
 import type { GamificationState, Lesson, Tier } from "@/lib/types";
 
 interface ProgressApiProfile {
@@ -23,6 +21,7 @@ interface ProgressApiProfile {
 
 interface ProgressApiResponse {
   profile: ProgressApiProfile;
+  newlyUnlockedBadgeIds?: string[];
 }
 
 function fromApiProfile(apiProfile: ProgressApiProfile): {
@@ -50,6 +49,7 @@ export default function LessonRunner({ lesson, initialTier, initialGamification 
   const router = useRouter();
   const [tier, setTier] = useState(initialTier);
   const [gamification, setGamification] = useState(initialGamification);
+  const [newBadges, setNewBadges] = useState<UnlockedBadge[]>([]);
 
   const persist = useCallback(
     async (body: Record<string, unknown>) => {
@@ -64,6 +64,13 @@ export default function LessonRunner({ lesson, initialTier, initialGamification 
         const next = fromApiProfile(data.profile);
         setTier(next.tier);
         setGamification(next.gamification);
+        if (data.newlyUnlockedBadgeIds?.length) {
+          const unlocked = data.newlyUnlockedBadgeIds
+            .map((id) => BADGES.find((b) => b.id === id))
+            .filter((b): b is (typeof BADGES)[number] => !!b)
+            .map((b) => ({ id: b.id, name: b.name, description: b.description }));
+          setNewBadges((prev) => [...prev, ...unlocked]);
+        }
       } catch {
         // Local-first, best-effort: LessonPlayer's own question flow and session
         // XP counter keep working fully offline even if a save round-trip fails —
@@ -73,12 +80,16 @@ export default function LessonRunner({ lesson, initialTier, initialGamification 
     [lesson.id, lesson.subject],
   );
 
-  const handleCorrect = useCallback(
-    (event: LessonCorrectEvent) => {
-      void persist({ correct: true, xpAward: event.xpAwarded });
-    },
-    [persist],
-  );
+  const dismissBadge = useCallback((id: string) => {
+    setNewBadges((prev) => prev.filter((b) => b.id !== id));
+  }, []);
+
+  const handleCorrect = useCallback(() => {
+    // xpAward is never sent — the server always awards its own fixed
+    // per-answer constant (see saveProgress in db/queries.ts), so a raw
+    // request can't inflate XP.
+    void persist({ correct: true });
+  }, [persist]);
 
   const handleIncorrect = useCallback(() => {
     void persist({ correct: false });
@@ -97,6 +108,7 @@ export default function LessonRunner({ lesson, initialTier, initialGamification 
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
+      <BadgeUnlockToast badges={newBadges} onDismiss={dismissBadge} />
       <Nav gamification={gamification} tier={tier} />
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
         <LessonPlayer

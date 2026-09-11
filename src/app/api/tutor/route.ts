@@ -61,23 +61,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  ensureLocalProfile();
-  const [profileRow] = await db.select().from(profile).limit(1);
-  if (!profileRow) {
+  let tier: Tier;
+  let profileId: string;
+  let usedToday: number;
+  let usageRowId: string | undefined;
+  const today = todayISODate();
+  try {
+    ensureLocalProfile();
+    const [profileRow] = await db.select().from(profile).limit(1);
+    if (!profileRow) {
+      return NextResponse.json(
+        { error: "server_error", message: "No local profile found." },
+        { status: 500 },
+      );
+    }
+    profileId = profileRow.id;
+    tier = profileRow.tier as Tier;
+
+    const [usageRow] = await db
+      .select()
+      .from(aiMessageLog)
+      .where(and(eq(aiMessageLog.profileId, profileId), eq(aiMessageLog.dateISO, today)))
+      .limit(1);
+    usedToday = usageRow?.count ?? 0;
+    usageRowId = usageRow?.id;
+  } catch (err) {
     return NextResponse.json(
-      { error: "server_error", message: "No local profile found." },
+      { error: "server_error", message: err instanceof Error ? err.message : String(err) },
       { status: 500 },
     );
   }
-
-  const tier = profileRow.tier as Tier;
-  const today = todayISODate();
-  const [usageRow] = await db
-    .select()
-    .from(aiMessageLog)
-    .where(and(eq(aiMessageLog.profileId, profileRow.id), eq(aiMessageLog.dateISO, today)))
-    .limit(1);
-  const usedToday = usageRow?.count ?? 0;
 
   if (!canUseAiTutor(tier, usedToday)) {
     const limit = TIER_LIMITS[tier].aiMessagesPerDay;
@@ -105,18 +118,31 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (usageRow) {
-    await db
-      .update(aiMessageLog)
-      .set({ count: usedToday + 1 })
-      .where(eq(aiMessageLog.id, usageRow.id));
-  } else {
-    await db.insert(aiMessageLog).values({
-      id: randomUUID(),
-      profileId: profileRow.id,
-      dateISO: today,
-      count: 1,
-    });
+  // Usage is only charged once the tutor actually produces its first token,
+  // not merely because a request was accepted — so a reply that fails before
+  // saying anything (Ollama drops mid-request, etc.) never costs a message.
+  let charged = false;
+  async function chargeUsageOnce() {
+    if (charged) return;
+    charged = true;
+    try {
+      if (usageRowId) {
+        await db
+          .update(aiMessageLog)
+          .set({ count: usedToday + 1 })
+          .where(eq(aiMessageLog.id, usageRowId));
+      } else {
+        await db.insert(aiMessageLog).values({
+          id: randomUUID(),
+          profileId,
+          dateISO: today,
+          count: 1,
+        });
+      }
+    } catch {
+      // Best-effort accounting: a failed usage write shouldn't break an
+      // otherwise-successful tutor reply already streaming to the student.
+    }
   }
 
   const encoder = new TextEncoder();
@@ -124,6 +150,7 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         for await (const token of streamTutorReply(messages)) {
+          await chargeUsageOnce();
           controller.enqueue(encoder.encode(token));
         }
       } catch (error) {

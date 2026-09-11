@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getProgress, saveProgress, type LocalProfile, type ProgressBundle } from "@/lib/db/queries";
+import {
+  getProgress,
+  saveProgress,
+  InvalidProgressError,
+  type LocalProfile,
+  type ProgressBundle,
+} from "@/lib/db/queries";
 
 // JSON has no Infinity; unlimited hearts serialize as null, mirroring how
 // TierLimits.aiMessagesPerDay already uses null for "unlimited" in types.ts.
@@ -13,11 +19,19 @@ function serializeBundle(bundle: ProgressBundle) {
       maxHearts: Number.isFinite(maxHearts) ? maxHearts : null,
     },
     lessons: bundle.lessons,
+    newlyUnlockedBadgeIds: bundle.newlyUnlockedBadgeIds,
   };
 }
 
 export async function GET() {
-  return NextResponse.json(serializeBundle(getProgress()));
+  try {
+    return NextResponse.json(serializeBundle(getProgress()));
+  } catch (err) {
+    return NextResponse.json(
+      { error: "server_error", message: err instanceof Error ? err.message : String(err) },
+      { status: 500 },
+    );
+  }
 }
 
 const saveProgressSchema = z
@@ -26,8 +40,9 @@ const saveProgressSchema = z
     subject: z.enum(["math", "science", "technology", "engineering"]),
     // Omitted entirely for a lesson-completion-only save that shouldn't also
     // award XP or dock a heart (see SaveProgressInput in db/queries.ts).
+    // No xpAward field: the amount per correct answer is a fixed server-side
+    // constant (see saveProgress), never taken from the request body.
     correct: z.boolean().optional(),
-    xpAward: z.number().int().positive().optional(),
     completeLesson: z.boolean().optional(),
     scorePercent: z.number().min(0).max(100).optional(),
   })
@@ -49,6 +64,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const bundle = saveProgress(parsed.data);
-  return NextResponse.json(serializeBundle(bundle));
+  try {
+    const bundle = saveProgress(parsed.data);
+    return NextResponse.json(serializeBundle(bundle));
+  } catch (err) {
+    if (err instanceof InvalidProgressError) {
+      return NextResponse.json({ error: "invalid_progress", message: err.message }, { status: 400 });
+    }
+    return NextResponse.json(
+      { error: "server_error", message: err instanceof Error ? err.message : String(err) },
+      { status: 500 },
+    );
+  }
 }

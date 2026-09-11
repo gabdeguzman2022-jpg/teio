@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "./client";
 import { aiMessageLog, badge, lessonProgress, profile } from "./schema";
@@ -68,6 +67,9 @@ export type LocalProfile = { tier: Tier } & GamificationState;
 export interface ProgressBundle {
   profile: LocalProfile;
   lessons: UserProgress[];
+  // Only ever non-empty on a saveProgress() result — getProgress() is a pure
+  // read and never unlocks anything.
+  newlyUnlockedBadgeIds: string[];
 }
 
 export interface SaveProgressInput {
@@ -77,7 +79,6 @@ export interface SaveProgressInput {
   // call must still update the streak and persist lesson_progress without
   // double-awarding XP or docking a heart for the answer that already did.
   correct?: boolean;
-  xpAward?: number;
   completeLesson?: boolean;
   scorePercent?: number;
 }
@@ -169,15 +170,28 @@ export function getProgress(nowISO: string = new Date().toISOString()): Progress
   return {
     profile: { tier, ...refilled },
     lessons: getLessonProgressRows(LOCAL_PROFILE_ID),
+    newlyUnlockedBadgeIds: [],
   };
 }
 
 // A mid-lesson question only ever affects XP/hearts. The lesson_progress row
 // itself (completed/bestScorePercent/attempts) is only written when the
 // lesson is actually finished — there's no "in progress" state in the schema.
-function upsertLessonProgress(input: SaveProgressInput, nowISO: string): void {
+// `lesson` is the already-resolved/validated real content for input.lessonId
+// (see resolveLesson) — scorePercent is checked against its real question
+// count so a request can't claim a score no real answer session could produce.
+function upsertLessonProgress(
+  input: SaveProgressInput,
+  lesson: ReturnType<typeof resolveLesson>,
+  nowISO: string,
+): void {
   if (!input.completeLesson) return;
   const scorePercent = input.scorePercent ?? 0;
+  if (!isAchievableScorePercent(scorePercent, lesson.questions.length)) {
+    throw new InvalidProgressError(
+      `scorePercent ${scorePercent} isn't achievable for "${lesson.id}" (${lesson.questions.length} questions).`,
+    );
+  }
 
   const existing = db
     .select()
@@ -218,18 +232,25 @@ export function saveProgress(
   input: SaveProgressInput,
   nowISO: string = new Date().toISOString(),
 ): ProgressBundle {
+  // Validate against real content before touching any state — an unknown
+  // lessonId/subject pair never gets to award XP, dock a heart, or mark
+  // completion. XP itself is never taken from the client (see the removed
+  // xpAward field): every correct answer is worth the same fixed, server-
+  // defined amount, so a raw API request can't inflate it.
+  const lesson = resolveLesson(input.lessonId, input.subject);
+
   const localProfile = getOrCreateLocalProfile();
   const { tier, ...state } = localProfile;
 
   let gamification: GamificationState = refillHeartsOverTime(state, nowISO);
   if (input.correct === true) {
-    gamification = awardXp(gamification, input.xpAward ?? DEFAULT_XP_PER_CORRECT_ANSWER);
+    gamification = awardXp(gamification, DEFAULT_XP_PER_CORRECT_ANSWER);
   } else if (input.correct === false) {
     gamification = loseHeart(gamification);
   }
   gamification = updateStreak(gamification, nowISO);
 
-  upsertLessonProgress(input, nowISO);
+  upsertLessonProgress(input, lesson, nowISO);
   const lessons = getLessonProgressRows(LOCAL_PROFILE_ID);
 
   const newlyUnlocked = checkBadgeUnlocks(gamification, lessons);
@@ -261,5 +282,6 @@ export function saveProgress(
   return {
     profile: { tier, ...gamification },
     lessons,
+    newlyUnlockedBadgeIds: newlyUnlocked,
   };
 }
