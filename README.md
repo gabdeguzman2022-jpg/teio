@@ -1,6 +1,6 @@
 # Teio
 
-A gamified STEM learning app for grades 7-12 — math, science, technology, and engineering built
+A gamified STEM learning app for grades 7-12 math, science, technology, and engineering built
 local-first for personal use. No cloud database, no login screen, no payment processing: everything
 runs on your own machine, including the AI tutor.
 
